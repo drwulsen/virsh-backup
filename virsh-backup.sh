@@ -56,13 +56,19 @@ function quit () {
 	# throw a message to syslog and stderr, reset LANG and terminate
 	message="$1"
 	logger -s -p 'user.error' "$message"
+	echo "$message" >> "$logfile"
 	LANG="$LANG_SYS"
 	exit 1
 }
 
 # actual control flow begins here
-# get all domain names, check which ones are running (hot backup) and which ones are off (cold backup) 
+# get all domain names, check which ones are running (hot backup) and which ones are off (cold backup)
+# we depend on the exact output formatting of virsh, which is terrible but the best i could do
 readarray -t all_domains < <(virsh list --all | tr -s ' ' | grep -E '^ ([[:digit:]]* |- )')
+
+if [ "${#all_domains[@]}" -eq 0 ]; then
+	quit "No domains to backup, quitting"
+fi
 for domainline in "${all_domains[@]}"; do
 	domain="$(echo "$domainline" | tr -s ' ' | awk '{ print $2 }' )"
 	mkdir -p "${backupdir}/${domain}"
@@ -71,7 +77,7 @@ for domainline in "${all_domains[@]}"; do
 	logfile="${backupdir}/${domain}/virsh-${domain}"
 	domain_xml="${backupdir}/${domain}/machine-${domain}.xml"
 	net_xml="${backupdir}/${domain}/net-${domain}.xml"
-	echo -e "$(date)\n$separator" | tee --append "$logfile" "$domain_xml" "$net_xml"
+	echo -e "$(date) ${domain}\n$separator" | tee --append "$logfile" "$domain_xml" "$net_xml"
 	dumpxml "$domain"
 	dumpnetxml "$domain"
 	if [ "$domain_active" -ne 0 ]; then
@@ -82,11 +88,11 @@ for domainline in "${all_domains[@]}"; do
 		domjobcomplete "$domain"
 		for disk in "${disks[@]}"; do
 			moveparams=("${disk}.${epoch_trunc}"* "${backupdir}/${domain}/${disk##*/}")
-			mv "${moveparams[@]}"
+			mv "${moveparams[@]}" || quit "Error moving file ${disk}.${epoch_trunc}'*' to ${backupdir}/${domain}/${disk##*/}"
 		done
 	else
 		for disk in "${disks[@]}"; do
-			cp -p "$disk" "${backupdir}/${domain}"
+			cp -p "$disk" "${backupdir}/${domain}" || quit "Error copying file $disk to ${backupdir}/${domain}"
 		done
 	fi
 done
