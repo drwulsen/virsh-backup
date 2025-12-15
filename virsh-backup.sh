@@ -10,7 +10,7 @@
 
 # check if we are root (works via sudo, too) - otherwise exit
 if [ "$(id -u)" -ne 0 ]; then
-  echo "Please run the backup script as root (UID 0)for proper access permissions"
+  echo "ERROR: Please run the backup script as root (UID 0)for proper access permissions"
   exit 1
 fi
 
@@ -19,26 +19,24 @@ LANG="C"	# virsh domjobcomplete is later parsed as string, so language matters
 backupdir="/mnt/data/backup"	# target base directory for all domain backups
 separator="################"	# fancy decoration for output files
 declare -a domain_networks all_domains
+declare -i timestamp_begin
 
-function dumpxml () {
-	# dump domain xml to file
-	virsh dumpxml "$domain" > "$domain_xml" || quit "failed to dump domain xml for $domain"
+function dumpxml () {	# dump domain xml to file
+	virsh dumpxml "$domain" > "$domain_xml" || quit "ERROR: failed to dump domain xml for $domain"
 }
-function dumpnetxml () {
-	# dump domain network(s) xml to file
+function dumpnetxml () {	# dump domain network(s) xml to file
 	readarray -t domain_networks < <(virsh domiflist "$domain" | grep -i 'network' | awk ' {print $3} ')
 	for network in "${domain_networks[@]}"; do
-		virsh net-dumpxml "$network" >> "$net_xml" || quit "failed to dump network xml for $domain"
+		virsh net-dumpxml "$network" >> "$net_xml" || quit "ERROR: failed to dump network xml for $domain"
 	done
 }
-function virsh-backup () {
-	# start the actual backup command
+function virsh-backup () {	# start the actual backup command
 	virsh backup-begin "$domain"	# this basically forks off into the background, no return value
+	echo -e "INFO: Backup of domain $domain started"
+	timestamp_begin="$(date +%s)"
 }
-function domjobcomplete () {
-	# check if our backup job has finished (yet), here having set LANG is important
+function domjobcomplete () {	# check if our backup job has finished (yet), here having set LANG is important
 	while [ "$(virsh domjobinfo "$domain" | grep 'Job type:' | awk '{ print $3 }')" != "None" ]; do
-		echo -e "Backup of domain: $domain is running...\t$(date)"
 		sleep 5
 	done
 	# lucky for us, the output of 'virsh domjobinfo domain' does reset after being printed one time
@@ -46,10 +44,12 @@ function domjobcomplete () {
 	job_complete="$(grep --count --ignore-case --max-count=1 'completed' "${logfile}")"
 	job_isbackup="$(grep --count --ignore-case --max-count=1 'backup' "${logfile}")"
 	if [ "$job_isbackup" -gt 0 ] && [ "$job_complete" -gt 0 ];then
-		echo "Backup of domain $domain finished at $(date)" >> "$logfile"
+		timestamp_end="$(date +%s)"
+		duration="$(( (timestamp_end - timestamp_begin)/60 ))"
+		echo "SUCCESS: Backup of domain $domain finished in ${duration}minutes at $(date)" >> "$logfile"
 	else
-		echo "Backup of domain $domain FAILED at $(date)" >> "$logfile"
-		quit "Backup of domain $domain FAILED, see $logfile for more info"
+		echo "ERROR: Backup of domain $domain FAILED at $(date)" >> "$logfile"
+		quit "ERROR: Backup of domain $domain FAILED, see $logfile for more info"
 	fi
 }
 function quit () {
@@ -82,17 +82,16 @@ for domainline in "${all_domains[@]}"; do
 	dumpnetxml "$domain"
 	if [ "$domain_active" -ne 0 ]; then
 		virsh domjobinfo "$domain" > /dev/null	# clear any previous message
-		epoch="$(date +%s)"
-		epoch_trunc="${epoch::-2}"	# cut 2 digits off the epoch for later locating the right file
+		timestamp_trunc="${timestamp_begin::-2}"	# cut 2 digits off the epoch for later locating the right file
 		virsh-backup "$domain"
 		domjobcomplete "$domain"
 		for disk in "${disks[@]}"; do
-			moveparams=("${disk}.${epoch_trunc}"* "${backupdir}/${domain}/${disk##*/}")
-			mv "${moveparams[@]}" || quit "Error moving file ${disk}.${epoch_trunc}'*' to ${backupdir}/${domain}/${disk##*/}"
+			moveparams=("${disk}.${timestamp_trunc}"* "${backupdir}/${domain}/${disk##*/}")
+			mv "${moveparams[@]}" || quit "ERROR: Error moving file ${disk}.${timestamp_trunc}'*' to ${backupdir}/${domain}/${disk##*/}"
 		done
 	else
 		for disk in "${disks[@]}"; do
-			cp -p "$disk" "${backupdir}/${domain}" || quit "Error copying file $disk to ${backupdir}/${domain}"
+			cp -p "$disk" "${backupdir}/${domain}" || quit "ERROR: Error copying file $disk to ${backupdir}/${domain}"
 		done
 	fi
 done
