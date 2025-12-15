@@ -75,20 +75,20 @@ function log () {	# log message to stdout, optional log to syslog
 function moveimages () {
 	if [ "$domain_active" -ne 0 ]; then
 	for disk in "${disks[@]}"; do
-		moveparams=("${disk}.${timestamp_trunc}"* "${backupdir}/${domain}/${disk##*/}/")
+		moveparams=("${disk}.${timestamp_trunc}"* "${backupdir}/${domain}/${disk##*/}")
 		if ! mv "${moveparams[@]}"; then
-			log "ERROR: Error moving file ${disk}.${timestamp_trunc}\* to ${backupdir}/${domain}/${disk##*/}/" 'log'
+			log "ERROR: Error moving file ${disk}.${timestamp_trunc}\* to ${backupdir}/${domain}/${disk##*/}" 'log'
 			return 1
 		else
-			log "SUCCESS: Moved ${disk}.${timestamp_trunc}\* to ${backupdir}/${domain}/${disk##*/}/" 'log'
+			log "SUCCESS: Moved ${disk}.${timestamp_trunc}\* to ${backupdir}/${domain}/${disk##*/}" 'log'
 			return 0
 		fi
 	done
 else
 	log "INFO: Backup of stopped domain $domain started at $(date)" 'log'
 	for disk in "${disks[@]}"; do
-		if ! cp -p "$disk" "${backupdir}/${domain}"; then
-			log "ERROR: Error copying stopped domain file $disk to ${backupdir}/${domain}" 'log'
+		if ! cp -p "$disk" "${backupdir}/${domain}/"; then
+			log "ERROR: Error copying stopped domain file $disk to ${backupdir}/${domain}/" 'log'
 			return 1
 		else
 			return 0
