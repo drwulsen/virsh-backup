@@ -9,7 +9,7 @@
 
 LANG_SYS="$LANG"
 LANG="C"	# virsh domjobcomplete is later parsed as string, so language matters
-backupdir="/mnt/data/backup"	# target base directory for all domain backups
+backupdir="/mnt/data/backup_vm"	# target base directory for all domain backups
 declare -a all_domains disks domain_networks
 declare domain_active duration timestamp_begin timestamp_end
 function _chain () {
