@@ -31,7 +31,7 @@ function dumpnetxml () {	# dump domain network(s) xml to file
 	done
 }
 function virsh-backup () {	# start the actual backup command
-	virsh backup-begin "$domain"	# this basically forks off into the background, no return value
+	virsh backup-begin "$domain" > /dev/null	# this basically forks off into the background, no return value
 	echo -e "INFO: Backup of domain $domain started"
 	timestamp_begin="$(date +%s)"
 }
@@ -46,7 +46,7 @@ function domjobcomplete () {	# check if our backup job has finished (yet), here 
 	if [ "$job_isbackup" -gt 0 ] && [ "$job_complete" -gt 0 ];then
 		timestamp_end="$(date +%s)"
 		duration="$(( (timestamp_end - timestamp_begin)/60 ))"
-		echo "SUCCESS: Backup of domain $domain finished in ${duration}minutes at $(date)" >> "$logfile"
+		echo "SUCCESS: Backup of domain $domain finished in ${duration}minutes at $(date)" #>> "$logfile"
 	else
 		echo "ERROR: Backup of domain $domain FAILED at $(date)" >> "$logfile"
 		quit "ERROR: Backup of domain $domain FAILED, see $logfile for more info"
@@ -77,7 +77,6 @@ for domainline in "${all_domains[@]}"; do
 	logfile="${backupdir}/${domain}/virsh-${domain}"
 	domain_xml="${backupdir}/${domain}/machine-${domain}.xml"
 	net_xml="${backupdir}/${domain}/net-${domain}.xml"
-	echo -e "$(date) ${domain}\n$separator" | tee --append "$logfile" "$domain_xml" "$net_xml"
 	dumpxml "$domain"
 	dumpnetxml "$domain"
 	if [ "$domain_active" -ne 0 ]; then
