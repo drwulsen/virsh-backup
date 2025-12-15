@@ -13,11 +13,22 @@ backupdir="/mnt/data/backup"	# target base directory for all domain backups
 declare -a all_domains disks domain_networks
 declare domain_active duration timestamp_begin timestamp_end
 function _chain () {
-	backup	# has no exit value
-	domjobcomplete || quit "ERROR: Backup of running domain $domain FAILED at $(date)"
+	backup ||	quit "ERROR: Backup of running domain $domain FAILED at $(date)"
 	moveimages || 	quit "ERROR: Error copying files/images to backup destination"
 	dumpxml || quit "ERROR: failed to dump domain xml for $domain"
 	dumpnetxml  || quit "ERROR: failed to dump network xml for $domain"
+}
+function backup () {	# start the actual backup command
+	if [ "$domain_active" -ne 0 ]; then
+		log "INFO: Backup of running domain $domain started at $(date)" 'log'
+		mkdir -p "${backupdir}/${domain}"
+		timestamp_begin="$(date +%s)"
+		timestamp_trunc="${timestamp_begin::-2}"	# cut 2 digits off the epoch for later locating the right file
+		virsh domjobinfo "$domain" > /dev/null	# clear any previous message
+		virsh backup-begin "$domain" > /dev/null	# this basically forks off into the background, no return value
+		domjobcomplete || return 1
+return 0
+	fi
 }
 function checkroot () {	# check if we are root (works via sudo, too) - otherwise exit
 	uid="$(id -u)"
@@ -93,17 +104,6 @@ function quit () {	# exit point with message and errorlevel
 	log "$1" "log"
 	LANG="$LANG_SYS"
 	exit "$exitcode"
-}
-function backup () {	# start the actual backup command
-	if [ "$domain_active" -ne 0 ]; then
-		log "INFO: Backup of running domain $domain started at $(date)" 'log'
-		mkdir -p "${backupdir}/${domain}"
-		timestamp_begin="$(date +%s)"
-		timestamp_trunc="${timestamp_begin::-2}"	# cut 2 digits off the epoch for later locating the right file
-		virsh domjobinfo "$domain" > /dev/null	# clear any previous message
-		virsh backup-begin "$domain" > /dev/null	# this basically forks off into the background, no return value
-		return 0
-	fi
 }
 # actual control flow begins here
 # get all domain names, check which ones are running (hot backup) and which ones are off (cold backup)
