@@ -6,17 +6,17 @@
 # It will dump the domains XML and the domains networks XML there,
 # then issue 'virsh backup-begin' on each domain and move the produced backup there as well.
 # For non-running machines, it will simply do the XML dumps as above, then copy the disk image(s) there.
-
+set -x
 LANG_SYS="$LANG"
 LANG="C"	# virsh domjobcomplete is later parsed as string, so language matters
-backupdir="/mnt/data/backup_vm"	# target base directory for all domain backups
+backupdir="/mnt/data/backup"	# target base directory for all domain backups
 declare -a all_domains disks domain_networks
 declare domain_active duration timestamp_begin timestamp_end
 function _chain () {
 	backup ||	quit "ERROR: Backup of running domain $domain FAILED at $(date)"
-	moveimages || 	quit "ERROR: Error copying files/images to backup destination"
+	moveimages || quit "ERROR: Error copying files/images to backup destination"
 	dumpxml || quit "ERROR: failed to dump domain xml for $domain"
-	dumpnetxml  || quit "ERROR: failed to dump network xml for $domain"
+	dumpnetxml || quit "ERROR: failed to dump network xml for $domain"
 }
 function backup () {	# start the actual backup command
 	if [ "$domain_active" -ne 0 ]; then
@@ -75,9 +75,9 @@ function log () {	# log message to stdout, optional log to syslog
 function moveimages () {
 	if [ "$domain_active" -ne 0 ]; then
 	for disk in "${disks[@]}"; do
-		moveparams=("${disk}.${timestamp_trunc}"* "${backupdir}/${domain}/${disk##*/}")
+		moveparams=("${disk}.${timestamp_trunc}"* "${backupdir}/${domain}/${disk##*/}/")
 		if ! mv "${moveparams[@]}"; then
-			log "ERROR: Error moving file ${disk}.${timestamp_trunc}\* to ${backupdir}/${domain}/${disk##*/}" 'log'
+			log "ERROR: Error moving file ${disk}.${timestamp_trunc}\* to ${backupdir}/${domain}/${disk##*/}/" 'log'
 			return 1
 		else
 			return 0
