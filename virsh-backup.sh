@@ -6,10 +6,10 @@
 # It will dump the domains XML and the domains networks XML there,
 # then issue 'virsh backup-begin' on each domain and move the produced backup there as well.
 # For non-running machines, it will simply do the XML dumps as above, then copy the disk image(s) there.
-set -x
+#set -x
 LANG_SYS="$LANG"
 LANG="C"	# virsh domjobcomplete is later parsed as string, so language matters
-backupdir="/mnt/data/backup"	# target base directory for all domain backups
+backupdir="/mnt/data/vm_backup"	# target base directory for all domain backups
 declare -a all_domains disks domain_networks
 declare domain_active duration timestamp_begin timestamp_end
 function _chain () {
