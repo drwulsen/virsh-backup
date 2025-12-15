@@ -9,7 +9,7 @@
 set -x
 LANG_SYS="$LANG"
 LANG="C"	# virsh domjobcomplete is later parsed as string, so language matters
-backupdir="/mnt/data/backup_vm"	# target base directory for all domain backups
+backupdir="/mnt/data/backup"	# target base directory for all domain backups
 declare -a all_domains disks domain_networks
 declare domain_active duration timestamp_begin timestamp_end
 function _chain () {
@@ -19,9 +19,9 @@ function _chain () {
 	dumpnetxml || quit "ERROR: failed to dump network xml for $domain"
 }
 function backup () {	# start the actual backup command
+	mkdir -p "${backupdir}/${domain}"
 	if [ "$domain_active" -ne 0 ]; then
 		log "INFO: Backup of running domain $domain started at $(date)" 'log'
-		mkdir -p "${backupdir}/${domain}"
 		timestamp_begin="$(date +%s)"
 		timestamp_trunc="${timestamp_begin::-2}"	# cut 2 digits off the epoch for later locating the right file
 		virsh domjobinfo "$domain" > /dev/null	# clear any previous message
