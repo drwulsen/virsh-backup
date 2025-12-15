@@ -75,7 +75,7 @@ function log () {	# log message to stdout, optional log to syslog
 function moveimages () {
 	if [ "$domain_active" -ne 0 ]; then
 	for disk in "${disks[@]}"; do
-		moveparams=("${disk}.${timestamp_trunc}"* "${backupdir}/${domain}/${disk##*/}")
+		moveparams=("${disk}.${timestamp_trunc}*" "${backupdir}/${domain}/${disk##*/}")
 		if ! mv "${moveparams[@]}"; then
 			log "ERROR: Error moving file ${disk}.${timestamp_trunc}\* to ${backupdir}/${domain}/${disk##*/}" 'log'
 			return 1
