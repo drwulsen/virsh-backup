@@ -9,7 +9,7 @@
 set -x
 LANG_SYS="$LANG"
 LANG="C"	# virsh domjobcomplete is later parsed as string, so language matters
-backupdir="/mnt/data/backup"	# target base directory for all domain backups
+backupdir="/mnt/data/backup_vm"	# target base directory for all domain backups
 declare -a all_domains disks domain_networks
 declare domain_active duration timestamp_begin timestamp_end
 function _chain () {
@@ -58,7 +58,7 @@ function domjobcomplete () {	# check if our backup job has finished (yet), here 
 function dumpnetxml () {	# dump domain network(s) xml to file
 	readarray -t domain_networks < <(virsh domiflist "$domain" | grep -i 'network' | awk ' {print $3} ')
 	for network in "${domain_networks[@]}"; do
-		virsh net-dumpxml "$network" >> "$net_xml" || return 1
+		virsh net-dumpxml "$network" > "$net_xml" || return 1
 	done
 	return 0
 }
